@@ -132,7 +132,13 @@ export default function Admin() {
         max={150}
         step={5}
         onChange={(v) => set({ expected: v })}
-        helper={avg !== null ? `media ultimelor ${ev.history.length} întâlniri: ${avg}` : undefined}
+        helper={
+          avg === null
+            ? undefined
+            : ev.history.length === 1
+              ? `ultima întâlnire: ${avg}`
+              : `media ultimelor ${ev.history.length} întâlniri: ${avg}`
+        }
         className="mt-5"
       />
       {draft.mode === 'size' ? (
