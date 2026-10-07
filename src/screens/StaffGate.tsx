@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signInWithGoogle, signOutUser } from '../lib/firebase'
+import { signOutUser } from '../lib/firebase'
+import { signInWithGoogle } from '../lib/googleSignIn'
 import { useStaffSession } from '../lib/hooks'
 import type { Role, Staff } from '../lib/types'
 import { Button, GoogleG, Logo, ScopeLabel, Spinner, colorFor } from '../ui/kit'

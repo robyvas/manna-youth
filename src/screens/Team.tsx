@@ -1,16 +1,15 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { addStaff, removeStaff, updateStaff } from '../lib/data'
 import { initials } from '../lib/logic'
 import type { Staff } from '../lib/types'
-import { BackPill, Button, Notice, Star } from '../ui/kit'
+import { Button, Icon, Notice } from '../ui/kit'
+import StaffHeader from './StaffHeader'
 import { useStaffData } from './StaffData'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function Team() {
   const { me, ev, staff } = useStaffData()
-  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -57,14 +56,8 @@ export default function Team() {
 
   return (
     <div className="screen screen-dense anim-in">
-      <div className="flex items-center justify-between">
-        <BackPill onClick={() => navigate('/admin')}>← Setări</BackPill>
-        <div className="flex items-center gap-2">
-          <Star />
-          <span className="text-[13px] font-bold tracking-[.1em]">ECHIPA</span>
-        </div>
-      </div>
-      <div className="mt-[18px] font-display text-[30px] leading-none tracking-[-.02em]">Echipa Manna.</div>
+      <StaffHeader />
+      <div className="mt-[22px] font-display text-[30px] leading-none tracking-[-.02em]">Echipa Manna.</div>
       <div className="mt-2 text-[13px] text-cream/80">
         Liderii apar în lista de check-in. Adminii pot schimba setările și echipa. Fiecare intră cu adresa Google de aici.
       </div>
@@ -74,7 +67,7 @@ export default function Team() {
           const self = s.email === myEmail
           const lastAdmin = s.isAdmin && admins <= 1
           return (
-            <div key={s.email} className="rounded-2xl border border-cream/8 bg-black/18 px-3.5 py-3">
+            <div key={s.email} className="anim-in rounded-2xl border border-cream/8 bg-black/18 px-3.5 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-white/15 text-sm font-black">
                   {initials(s.name)}
@@ -90,7 +83,9 @@ export default function Team() {
                   <button
                     onClick={() => remove(s)}
                     disabled={busy}
-                    className="rounded-full border border-cream/25 px-3 py-1.5 text-xs font-bold text-cream"
+                    className={`press rounded-full border px-3 py-1.5 text-xs font-bold ${
+                      confirm === s.email ? 'anim-shake border-warn bg-warn text-ink' : 'border-cream/25 text-cream'
+                    }`}
                   >
                     {confirm === s.email ? 'Sigur?' : 'Scoate'}
                   </button>
@@ -120,7 +115,7 @@ export default function Team() {
           onChange={(e) => setName(e.target.value)}
           placeholder="Nume și prenume"
           maxLength={50}
-          className="mt-3 w-full rounded-xl border-0 bg-black/22 px-3.5 py-3 text-[15px] font-bold text-cream outline-none"
+          className="mt-3 w-full rounded-xl border-0 bg-black/22 px-3.5 py-3 text-[15px] font-bold text-cream outline-none transition-shadow focus:ring-2 focus:ring-cream/40"
         />
         <input
           value={email}
@@ -129,10 +124,10 @@ export default function Team() {
           type="email"
           autoCapitalize="off"
           autoCorrect="off"
-          className="mt-2 w-full rounded-xl border-0 bg-black/22 px-3.5 py-3 text-[15px] font-bold text-cream outline-none"
+          className="mt-2 w-full rounded-xl border-0 bg-black/22 px-3.5 py-3 text-[15px] font-bold text-cream outline-none transition-shadow focus:ring-2 focus:ring-cream/40"
         />
         <Button height={48} className="mt-3 text-sm" onClick={add} disabled={busy}>
-          Adaugă în echipă
+          <Icon name="plus" size={16} /> Adaugă în echipă
         </Button>
       </div>
 
@@ -153,11 +148,11 @@ function Toggle({ on, disabled, onClick, children }: { on: boolean; disabled?: b
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
+      className={`press flex items-center gap-1 rounded-full px-3.5 py-1.5 text-xs font-bold ${
         on ? 'bg-cream text-ink' : 'border border-cream/25 bg-transparent text-cream/75'
       } ${disabled ? 'opacity-50' : ''}`}
     >
-      {on ? '✓ ' : ''}
+      {on && <Icon name="check" size={12} />}
       {children}
     </button>
   )

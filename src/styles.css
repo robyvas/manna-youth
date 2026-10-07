@@ -40,10 +40,41 @@ input::placeholder { color: rgba(246, 241, 234, .55); }
 @keyframes mn-pop { 0% { transform: scale(.6); opacity: 0 } 70% { transform: scale(1.06) } 100% { transform: scale(1); opacity: 1 } }
 @keyframes mn-in { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
 @keyframes mn-pulse { 0%, 100% { opacity: .5 } 50% { opacity: 1 } }
-.anim-in { animation: mn-in .3s ease both; }
-.anim-pop { animation: mn-pop .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+@keyframes mn-chip { from { opacity: 0; transform: translateY(8px) scale(.9) } to { opacity: 1; transform: none } }
+@keyframes mn-bump { 0% { transform: scale(1) } 40% { transform: scale(1.18) } 100% { transform: scale(1) } }
+@keyframes mn-spin { to { transform: rotate(360deg) } }
+@keyframes mn-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(246, 241, 234, 0) } 50% { box-shadow: 0 0 0 4px rgba(246, 241, 234, .25) } }
+@keyframes mn-toast { 0% { opacity: 0; transform: translate(-50%, -16px) } 12%, 85% { opacity: 1; transform: translate(-50%, 0) } 100% { opacity: 0; transform: translate(-50%, -8px) } }
+@keyframes mn-wipe { from { clip-path: circle(0% at 50% 100%) } to { clip-path: circle(150% at 50% 100%) } }
+@keyframes mn-float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+@keyframes mn-shake { 0%, 100% { transform: none } 25% { transform: translateX(-5px) } 75% { transform: translateX(5px) } }
+
+.anim-in { animation: mn-in .3s ease backwards; }
+.anim-pop { animation: mn-pop .5s cubic-bezier(.2, .9, .3, 1.2) backwards; }
 .anim-pulse { animation: mn-pulse 1.6s infinite; }
 .anim-pulse-fast { animation: mn-pulse 1.2s infinite; }
+.anim-chip { animation: mn-chip .35s cubic-bezier(.2, .9, .3, 1.2) backwards; }
+.anim-bump { animation: mn-bump .35s ease; }
+.anim-spin { animation: mn-spin .8s linear infinite; }
+.anim-glow { animation: mn-glow 1.4s ease-in-out infinite; }
+.anim-wipe { animation: mn-wipe .7s cubic-bezier(.6, 0, .2, 1) both; }
+.anim-float { animation: mn-float 4s ease-in-out infinite; }
+.anim-shake { animation: mn-shake .3s ease; }
+
+/* Tactile press feedback on every tappable control */
+.press {
+  transition: transform .15s cubic-bezier(.2, .9, .3, 1.2), background-color .2s, color .2s, border-color .2s, box-shadow .2s, opacity .2s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.press:not(:disabled):active { transform: scale(.96); }
+@media (hover: hover) {
+  .press:not(:disabled):hover { filter: brightness(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
 
 /* Phone-width column, centered on desktop */
 .screen {

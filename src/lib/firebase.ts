@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { GoogleAuthProvider, getAuth, signInAnonymously, signInWithPopup, signOut } from 'firebase/auth'
+import { browserLocalPersistence, indexedDBLocalPersistence, initializeAuth, signInAnonymously, signOut } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const app = initializeApp({
@@ -11,7 +11,8 @@ const app = initializeApp({
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 })
 
-export const auth = getAuth(app)
+// No popup resolver here: the Google sign-in code lives in the staff bundle (googleSignIn.ts).
+export const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] })
 auth.languageCode = 'ro'
 export const db = getFirestore(app)
 
@@ -21,12 +22,6 @@ export async function ensureSignedIn() {
   if (auth.currentUser) return auth.currentUser
   const cred = await signInAnonymously(auth)
   return cred.user
-}
-
-export async function signInWithGoogle() {
-  const provider = new GoogleAuthProvider()
-  provider.setCustomParameters({ prompt: 'select_account' })
-  await signInWithPopup(auth, provider)
 }
 
 export function signOutUser() {

@@ -46,8 +46,11 @@ export async function isNameTaken(raw: string): Promise<boolean> {
 
 export class NameTakenError extends Error {}
 
-/** Registers the participant and places them in the least-filled group, atomically. */
-export async function joinEvent(raw: string): Promise<string> {
+/**
+ * Registers someone and places them in the least-filled group, atomically.
+ * `remember` ties the record to this device; staff adding a person manually skip it.
+ */
+export async function joinEvent(raw: string, remember = true): Promise<string> {
   const user = await ensureSignedIn()
   const name = cleanName(raw)
   const key = nameKey(name)
@@ -66,10 +69,12 @@ export async function joinEvent(raw: string): Promise<string> {
       sizes: pid ? { ...ev.sizes, [pid]: (ev.sizes[pid] ?? 0) + 1 } : ev.sizes,
     })
   })
-  try {
-    localStorage.setItem(DEVICE_KEY, attRef.id)
-  } catch {
-    // Private mode: the session simply won't survive a reload.
+  if (remember) {
+    try {
+      localStorage.setItem(DEVICE_KEY, attRef.id)
+    } catch {
+      // Private mode: the session simply won't survive a reload.
+    }
   }
   return attRef.id
 }

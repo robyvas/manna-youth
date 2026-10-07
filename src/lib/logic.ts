@@ -1,6 +1,7 @@
 import type { ActiveLeader, Attendee, EventDoc, Group, Kind } from './types'
 
-export const COLORS = ['#bb2618', '#1f4d8f', '#2e7d4f', '#b8860b', '#6a3d9a', '#0f6f73', '#9c2b5b', '#c0552f']
+// Brand red is left out on purpose: a red group screen would look like the waiting screen.
+export const COLORS = ['#1f4d8f', '#2e7d4f', '#b8860b', '#6a3d9a', '#0f6f73', '#9c2b5b', '#c0552f', '#3f4a5a']
 
 export const KINDS: Record<Kind, { label: string; unit: string; unitAcc: string; unitPl: string }> = {
   serie: { label: 'Grupe de discuții', unit: 'Grupa', unitAcc: 'grupa', unitPl: 'grupe' },

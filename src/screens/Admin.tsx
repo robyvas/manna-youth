@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { generateGroups, resetEvent, updateEvent } from '../lib/data'
-import { signOutUser } from '../lib/firebase'
 import { KINDS, effectiveSize, leadersNeeded, previewDistribution } from '../lib/logic'
 import type { EventDoc } from '../lib/types'
-import { Button, ScopeLabel, UserChip, colorFor } from '../ui/kit'
+import { Button, Icon } from '../ui/kit'
+import StaffHeader from './StaffHeader'
 import { useStaffData } from './StaffData'
 
 type Settings = Pick<EventDoc, 'day' | 'time' | 'expected' | 'mode' | 'size' | 'groups'>
@@ -19,7 +19,7 @@ const pick = (ev: EventDoc): Settings => ({
 })
 
 export default function Admin() {
-  const { me, ev, attendees } = useStaffData()
+  const { ev, attendees } = useStaffData()
   const navigate = useNavigate()
   const k = KINDS[ev.kind]
 
@@ -90,12 +90,9 @@ export default function Admin() {
 
   return (
     <div className="screen screen-dense anim-in pb-0!">
-      <div className="flex items-center justify-between">
-        <ScopeLabel>ADMIN</ScopeLabel>
-        <UserChip name={me.displayName} color={colorFor(me.user.email ?? '')} onClick={() => signOutUser()} />
-      </div>
+      <StaffHeader />
 
-      <div className="mt-5 text-[11px] font-bold tracking-[.14em]">EVENIMENT</div>
+      <div className="mt-[22px] text-[11px] font-bold tracking-[.14em]">EVENIMENT</div>
       <div className="mt-2 flex gap-2">
         <input
           type="date"
@@ -116,7 +113,7 @@ export default function Admin() {
           <button
             key={m}
             onClick={() => set({ mode: m })}
-            className={`flex-1 rounded-full border-0 p-[9px] text-[13px] font-semibold ${
+            className={`press flex-1 rounded-full border-0 p-[9px] text-[13px] font-semibold ${
               draft.mode === m ? 'bg-cream text-ink' : 'bg-transparent text-cream/80'
             }`}
           >
@@ -181,23 +178,35 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="mt-3.5 flex items-center justify-between rounded-2xl bg-black/22 px-4 py-3.5">
+      <button
+        onClick={() => navigate('/lider')}
+        className="press mt-3.5 flex w-full items-center justify-between rounded-2xl bg-black/22 px-4 py-3.5 text-left text-cream"
+      >
         <div>
           <div className="text-sm font-bold">Lideri cu check-in</div>
-          <div className="text-xs text-cream/75">{short ? `mai cheamă ${needed - present}` : 'complet'}</div>
+          <div className="text-xs text-cream/75">{short ? `mai cheamă ${needed - present} · atinge pentru check-in` : 'complet'}</div>
         </div>
-        <div className={`text-[22px] font-black ${short ? 'text-warn' : ''}`}>
-          {present}/{needed}
+        <div className="flex items-center gap-2">
+          <span key={present} className={`anim-bump text-[22px] font-black ${short ? 'text-warn' : ''}`}>
+            {present}/{needed}
+          </span>
+          <Icon name="arrow" size={18} className="opacity-70" />
         </div>
-      </div>
+      </button>
+      <button
+        onClick={() => navigate('/admin/afis')}
+        className="press mt-2.5 flex w-full items-center gap-3 rounded-2xl border border-cream/15 bg-black/12 px-4 py-3 text-left text-cream"
+      >
+        <Icon name="qr" size={22} />
+        <span className="flex-1">
+          <span className="block text-sm font-bold">Afișul de la intrare</span>
+          <span className="block text-xs text-cream/70">Codul QR permanent, gata de printat</span>
+        </span>
+        <Icon name="arrow" size={18} />
+      </button>
 
-      <div className="mt-3.5 grid grid-cols-3 gap-2">
-        <SmallLink onClick={() => navigate('/lider')}>Check-in lideri</SmallLink>
-        <SmallLink onClick={() => navigate('/admin/echipa')}>Echipa</SmallLink>
-        <SmallLink onClick={() => navigate('/admin/afis')}>Afiș QR</SmallLink>
-      </div>
-
-      <Button height={48} variant="outline" className="mt-3.5 border-cream/20 text-sm" onClick={reset} disabled={busy}>
+      <Button height={48} variant="outline" className={`mt-3.5 text-sm ${confirmReset ? 'anim-shake border-warn text-warn' : 'border-cream/20'}`} onClick={reset} disabled={busy}>
+        <Icon name="undo" size={16} />
         {confirmReset ? 'Apasă din nou ca să confirmi' : 'Resetează participanții'}
       </Button>
 
@@ -210,7 +219,19 @@ export default function Admin() {
           onClick={primary}
           disabled={busy}
         >
-          {ev.released ? `Vezi ${k.unitPl} publicate →` : `Generează ${k.unitPl} →`}
+          {busy ? (
+            <>
+              <Icon name="shuffle" className="anim-spin" /> Se amestecă…
+            </>
+          ) : ev.released ? (
+            <>
+              Vezi {k.unitPl} publicate <Icon name="arrow" />
+            </>
+          ) : (
+            <>
+              <Icon name="shuffle" /> Generează {k.unitPl}
+            </>
+          )}
         </Button>
         <div className="text-center text-xs text-cream/75">
           {ev.released ? `Participanții își văd acum ${k.unitAcc}.` : `${attendees.length} în așteptare · ${present} lideri prezenți`}
@@ -247,13 +268,5 @@ function SliderCard(props: {
       />
       {props.helper && <div className="mt-0.5 text-[11px] text-cream/70">{props.helper}</div>}
     </div>
-  )
-}
-
-function SmallLink({ children, onClick }: { children: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="h-11 rounded-full border border-cream/25 bg-black/10 px-2 text-[13px] font-bold text-cream">
-      {children}
-    </button>
   )
 }

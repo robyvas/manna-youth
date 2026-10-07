@@ -4,7 +4,7 @@ import { ensureSignedIn } from '../lib/firebase'
 import { useEvent, useMyAttendee } from '../lib/hooks'
 import { COLORS, KINDS, cleanName, firstName, fmtDate, initials, todayISO } from '../lib/logic'
 import type { EventDoc } from '../lib/types'
-import { BackPill, Button, Chip, Logo, Notice, Spinner, Star } from '../ui/kit'
+import { BackPill, Button, Chip, Icon, Logo, Notice, Spinner, Star } from '../ui/kit'
 
 function readDevice(): string | null {
   try {
@@ -78,7 +78,7 @@ function Landing({ ev, onNext }: { ev: EventDoc; onNext: () => void }) {
         <span>{fmtDate(ev.day, ev.time)}</span>
       </div>
       <div className="my-auto flex flex-col items-center text-center">
-        <Logo width={200} />
+        <Logo width={200} className="anim-float" />
         <div className="mt-[26px]">
           <Chip>{k.label}</Chip>
         </div>
@@ -87,8 +87,8 @@ function Landing({ ev, onNext }: { ev: EventDoc; onNext: () => void }) {
             <div className="mt-3.5 text-[15px] leading-[1.45] opacity-90">
               Spune-ne cum te cheamă și îți găsim {k.unitAcc} pentru seara asta.
             </div>
-            <Button className="mt-7 text-base" onClick={onNext}>
-              Intru →
+            <Button className="anim-in mt-7 text-base shadow-[0_8px_24px_rgba(0,0,0,.18)]" style={{ animationDelay: '150ms' }} onClick={onNext}>
+              Intru <Icon name="arrow" />
             </Button>
           </>
         ) : (
@@ -160,10 +160,10 @@ function NameStep({ ev, onBack, onJoined }: { ev: EventDoc; onBack: () => void; 
           autoCapitalize="words"
           maxLength={40}
           enterKeyHint="go"
-          className="mt-7 w-full border-0 border-b-[3px] border-cream bg-transparent py-2.5 text-[30px] font-bold tracking-[-.01em] text-cream outline-none"
+          className="mt-7 w-full border-0 border-b-[3px] border-cream/60 bg-transparent py-2.5 text-[30px] font-bold tracking-[-.01em] text-cream outline-none transition-colors duration-300 focus:border-cream"
         />
         {isTaken && (
-          <div className="mt-2.5 text-[13px] opacity-85">
+          <div className="anim-shake mt-2.5 text-[13px] opacity-85">
             Mai e un {typed} aici. Adaugă inițiala numelui (ex. „{typed} P.”).
           </div>
         )}
@@ -173,7 +173,15 @@ function NameStep({ ev, onBack, onJoined }: { ev: EventDoc; onBack: () => void; 
             <Notice>Niciun lider nu a dat check-in încă. Repartizarea nu poate fi trimisă.</Notice>
           )}
           <Button type="submit" variant={canSubmit ? 'cream' : 'muted'} disabled={!canSubmit} className="text-base">
-            {busy ? 'Un moment…' : `Găsește-mi ${k.unitAcc}`}
+            {busy ? (
+              <>
+                <Star size={18} className="anim-spin" /> Te înscriem…
+              </>
+            ) : (
+              <>
+                Găsește-mi {k.unitAcc} <Icon name="arrow" />
+              </>
+            )}
           </Button>
         </div>
       </form>
@@ -215,16 +223,21 @@ function Reveal({ ev, name, index }: { ev: EventDoc; name: string; index: number
 
   useEffect(() => {
     document.body.style.background = color
+    // A short buzz on Android when the group appears.
+    if ('vibrate' in navigator) navigator.vibrate?.([40, 60, 40])
     return () => {
       document.body.style.background = ''
     }
   }, [color])
 
   return (
-    <div style={{ background: color }} className="relative min-h-dvh overflow-hidden">
+    <div className="relative min-h-dvh overflow-hidden bg-manna">
+      <div key={leader.pid} style={{ background: color }} className="anim-wipe absolute inset-0" />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-10 top-[120px] select-none font-display text-[300px] leading-none tracking-[-.06em] text-white/8"
+        key={`n-${leader.pid}`}
+        style={{ animationDelay: '350ms' }}
+        className="anim-in pointer-events-none absolute -right-10 top-[120px] select-none font-display text-[300px] leading-none tracking-[-.06em] text-white/8"
       >
         {n}
       </div>
@@ -233,7 +246,7 @@ function Reveal({ ev, name, index }: { ev: EventDoc; name: string; index: number
           <Star />
           <span>{fmtDate(ev.day, ev.time)}</span>
         </div>
-        <div key={`${leader.pid}`} className="anim-pop relative mt-auto">
+        <div key={`${leader.pid}`} style={{ animationDelay: '250ms' }} className="anim-pop relative mt-auto">
           <div className="text-[15px] opacity-85">
             Salut, <b>{firstName(name)}</b>. Ești în
           </div>
