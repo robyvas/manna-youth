@@ -1,0 +1,88 @@
+rules_version = '2';
+
+// Manna Youth: participants are anonymous, staff sign in with Google.
+// Team membership lives in /staff/{email}; admins manage it from the app.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+    function staffPath() {
+      return /databases/$(database)/documents/staff/$(myEmail());
+    }
+    function isStaff() {
+      return signedIn()
+        && request.auth.token.get('email', null) != null
+        && request.auth.token.get('email_verified', false) == true
+        && exists(staffPath());
+    }
+    function isAdmin() {
+      return isStaff() && get(staffPath()).data.isAdmin == true;
+    }
+
+    function validStaff(d) {
+      return d.keys().hasOnly(['email', 'name', 'pid', 'isAdmin', 'isLeader', 'order'])
+        && d.email is string
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+        && d.pid is string && d.pid.size() > 0 && d.pid.size() <= 20
+        && d.isAdmin is bool && d.isLeader is bool
+        && d.order is number;
+    }
+
+    match /staff/{email} {
+      allow read: if isStaff();
+      allow create: if isAdmin()
+        && email == email.lower()
+        && request.resource.data.email == email
+        && validStaff(request.resource.data);
+      // Nobody can drop their own admin role, so there is always at least one admin.
+      allow update: if isAdmin()
+        && validStaff(request.resource.data)
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.pid == resource.data.pid
+        && (email != myEmail() || request.resource.data.isAdmin == true);
+      allow delete: if isAdmin() && email != myEmail();
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      // Staff edit everything; a participant may only bump the counters when joining.
+      allow update: if isStaff()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count', 'sizes'])
+          && request.resource.data.count == resource.data.count + 1);
+
+      match /attendees/{attendeeId} {
+        allow read: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['name', 'key', 'uid', 'leaderId', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 40
+          && request.resource.data.key is string
+          && (request.resource.data.leaderId == null || request.resource.data.leaderId is string)
+          && request.resource.data.createdAt is number
+          && getAfter(/databases/$(database)/documents/events/$(eventId)/names/$(request.resource.data.key)).data.attendeeId == attendeeId;
+        allow update: if isStaff()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leaderId']);
+        allow delete: if isStaff();
+      }
+
+      // One document per name: makes duplicate names impossible tonight.
+      match /names/{key} {
+        allow get: if signedIn();
+        allow list: if isStaff();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['attendeeId', 'uid'])
+          && request.resource.data.uid == request.auth.uid
+          && existsAfter(/databases/$(database)/documents/events/$(eventId)/attendees/$(request.resource.data.attendeeId));
+        allow delete: if isStaff();
+      }
+    }
+  }
+}
