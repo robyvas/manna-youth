@@ -101,6 +101,34 @@ input::placeholder { color: rgba(246, 241, 234, .55); }
 
 input[type="range"] { accent-color: var(--color-cream); }
 
+/* Floating glass tab bar for staff screens */
+:root { --tabbar-space: calc(86px + max(12px, env(safe-area-inset-bottom))); }
+.glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .08));
+  -webkit-backdrop-filter: blur(24px) saturate(120%) brightness(.92);
+  backdrop-filter: blur(24px) saturate(120%) brightness(.92);
+  border: 1px solid rgba(255, 255, 255, .28);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 -1px 0 rgba(0, 0, 0, .12);
+}
+.tabbar {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: min(406px, calc(100% - 24px));
+  transform: translateX(-50%);
+  animation: mn-tabbar .5s cubic-bezier(.2, .9, .3, 1.15) backwards;
+}
+.tab-pill {
+  background: linear-gradient(180deg, #fffaf3, #efe7dc);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .9);
+  transition: transform .45s cubic-bezier(.2, .9, .3, 1.15);
+}
+@keyframes mn-tabbar { from { opacity: 0; transform: translate(-50%, 24px) } to { opacity: 1; transform: translate(-50%, 0) } }
+
+.with-tabbar .screen { padding-bottom: calc(var(--tabbar-space) + 16px); }
+.with-tabbar .sticky-footer { padding-bottom: calc(var(--tabbar-space) + 4px); }
+
 @media print {
   @page { size: A4; margin: 0; }
   .no-print { display: none !important; }

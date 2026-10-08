@@ -1,27 +1,47 @@
-import type { ReactNode } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import Admin from './Admin'
 import Leader from './Leader'
 import Poster from './Poster'
 import { StaffDataProvider } from './StaffData'
 import StaffGate from './StaffGate'
+import { TabBar } from './StaffHeader'
 import Team from './Team'
 import Verify from './Verify'
 
-function Staff({ scope, children }: { scope: 'leader' | 'admin'; children: ReactNode }) {
-  return <StaffGate scope={scope}>{(me) => <StaffDataProvider me={me}>{children}</StaffDataProvider>}</StaffGate>
+/**
+ * One sign-in, one live data connection and one tab bar for all staff screens,
+ * so switching tabs doesn't reload anything.
+ */
+function StaffShell() {
+  const { pathname } = useLocation()
+  const scope = pathname.startsWith('/admin') ? 'admin' : 'leader'
+  const showTabs = pathname !== '/admin/afis'
+  return (
+    <StaffGate scope={scope}>
+      {(me) => (
+        <StaffDataProvider me={me}>
+          <div className={showTabs ? 'with-tabbar' : ''}>
+            <Outlet />
+          </div>
+          {showTabs && <TabBar />}
+        </StaffDataProvider>
+      )}
+    </StaffGate>
+  )
 }
 
 /** Everything behind Google sign-in. Loaded separately so the participant page stays light. */
 export default function StaffRoutes() {
   return (
     <Routes>
-      <Route path="/lider" element={<Staff scope="leader"><Leader /></Staff>} />
-      <Route path="/lider/verificare" element={<Staff scope="leader"><Verify /></Staff>} />
-      <Route path="/admin" element={<Staff scope="admin"><Admin /></Staff>} />
-      <Route path="/admin/verificare" element={<Staff scope="admin"><Verify /></Staff>} />
-      <Route path="/admin/echipa" element={<Staff scope="admin"><Team /></Staff>} />
-      <Route path="/admin/afis" element={<Staff scope="admin"><Poster /></Staff>} />
+      <Route element={<StaffShell />}>
+        <Route path="/lider" element={<Leader />} />
+        <Route path="/lider/verificare" element={<Verify />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/verificare" element={<Verify />} />
+        <Route path="/admin/echipa" element={<Team />} />
+        <Route path="/admin/afis" element={<Poster />} />
+      </Route>
       <Route path="*" element={<Navigate to="/in" replace />} />
     </Routes>
   )
