@@ -1,4 +1,4 @@
-import type { ActiveLeader, Attendee, EventDoc, Group, Kind } from './types'
+import type { ActiveLeader, Attendee, EventDoc, Group, Kind, PresentLeader } from './types'
 
 // Brand red is left out on purpose: a red group screen would look like the waiting screen.
 export const COLORS = ['#1f4d8f', '#2e7d4f', '#b8860b', '#6a3d9a', '#0f6f73', '#9c2b5b', '#c0552f', '#3f4a5a']
@@ -137,4 +137,11 @@ export function randomId(len = 8): string {
   const chars = 'abcdefghijkmnpqrstuvwxyz23456789'
   const bytes = crypto.getRandomValues(new Uint8Array(len))
   return Array.from(bytes, (b) => chars[b % chars.length]).join('')
+}
+
+/** Checked-in leaders as an ordered list: team-list order, then check-in time. */
+export function activeFromPresent(present: Record<string, PresentLeader>): ActiveLeader[] {
+  return Object.entries(present)
+    .sort(([, a], [, b]) => a.order - b.order || a.at - b.at)
+    .map(([pid, l]) => ({ pid, name: l.name }))
 }

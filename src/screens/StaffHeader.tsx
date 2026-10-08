@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { signOutUser } from '../lib/firebase'
 import { KINDS } from '../lib/logic'
@@ -8,9 +9,41 @@ import { useStaffData } from './StaffData'
 export default function StaffHeader() {
   const { me } = useStaffData()
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-2">
       <ScopeLabel>{me.role === 'admin' ? 'ADMIN' : 'LIDERI'}</ScopeLabel>
+      <SyncBadge />
       <UserChip name={me.displayName} color={colorFor(me.user.email ?? '')} onClick={() => signOutUser()} />
+    </div>
+  )
+}
+
+/** Shows up only when what's on screen may not match the server (offline or still sending). */
+function SyncBadge() {
+  const { synced } = useStaffData()
+  const [online, setOnline] = useState(navigator.onLine)
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine)
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    return () => {
+      window.removeEventListener('online', update)
+      window.removeEventListener('offline', update)
+    }
+  }, [])
+  // Short blips are normal; only flag it if it lasts.
+  useEffect(() => {
+    if (synced && online) return setShow(false)
+    const t = setTimeout(() => setShow(true), 1200)
+    return () => clearTimeout(t)
+  }, [synced, online])
+  if (!show) return <div className="flex-1" />
+  return (
+    <div className="flex flex-1 justify-center">
+      <div className="anim-in flex items-center gap-1.5 rounded-full bg-warn px-2.5 py-1 text-[11px] font-bold text-ink">
+        <span className="anim-pulse-fast inline-block h-1.5 w-1.5 rounded-full bg-ink" />
+        {online ? 'Se sincronizează…' : 'Fără internet'}
+      </div>
     </div>
   )
 }

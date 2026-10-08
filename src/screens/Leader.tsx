@@ -27,17 +27,23 @@ export default function Leader() {
       : `Atinge numele tău pentru check-in. Fiecare lider prezent = o ${k.unitAcc}.`
     : 'Ești admin, poți da check-in pentru oricine.'
 
-  async function toggle(l: Staff) {
-    if (busy) return
-    setBusy(l.pid)
+  // Leaders whose change this device is still sending. The row flips right away
+  // (Firestore applies local writes instantly); the mark stays until the server confirms.
+  const [saving, setSaving] = useState<Set<string>>(new Set())
+
+  function toggle(l: Staff) {
+    if (busy === 'generate') return
     setError('')
-    try {
-      await setCheckIn(staff, ev, l, !present.has(l.pid))
-    } catch {
-      setError('Nu s-a salvat. Verifică internetul și mai încearcă.')
-    } finally {
-      setBusy(null)
-    }
+    setSaving((s) => new Set(s).add(l.pid))
+    setCheckIn(staff, ev, attendees, l, !present.has(l.pid))
+      .catch(() => setError('Nu s-a salvat. Verifică internetul și mai încearcă.'))
+      .finally(() =>
+        setSaving((s) => {
+          const next = new Set(s)
+          next.delete(l.pid)
+          return next
+        }),
+      )
   }
 
   async function primary() {
@@ -92,12 +98,12 @@ export default function Leader() {
           const idx = present.get(l.pid)
           const on = idx !== undefined
           const color = on ? COLORS[idx % COLORS.length] : 'rgba(255,255,255,.15)'
-          const loading = busy === l.pid
+          const loading = saving.has(l.pid)
           return (
             <button
               key={l.email}
               onClick={() => toggle(l)}
-              disabled={busy !== null}
+              disabled={busy === 'generate'}
               style={{ animationDelay: `${i * 40}ms` }}
               className={`press anim-in flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left text-cream ${
                 on ? 'border-cream/60 bg-black/35' : 'border-cream/8 bg-black/18'
@@ -110,7 +116,7 @@ export default function Leader() {
                   on ? 'anim-pop text-cream' : 'text-cream/75'
                 }`}
               >
-                {loading ? <Icon name="shuffle" size={16} className="anim-spin" /> : initials(l.name)}
+                {initials(l.name)}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-bold">
@@ -118,7 +124,7 @@ export default function Leader() {
                   {mine?.email === l.email && <span className="ml-1.5 text-[11px]">· tu</span>}
                 </div>
                 <div className="text-xs text-cream/75">
-                  {on ? `${k.unit} ${idx + 1} · ${ev.sizes[l.pid] ?? 0} pers.` : 'Nu a dat check-in'}
+                  {loading ? 'Se salvează…' : on ? `${k.unit} ${idx + 1} · ${ev.sizes[l.pid] ?? 0} pers.` : 'Nu a dat check-in'}
                 </div>
               </div>
               <div

@@ -70,14 +70,17 @@ export function useStaffSession(): StaffSession {
 export function useEvent(enabled = true) {
   const [ev, setEv] = useState<EventDoc | null>(null)
   const [exists, setExists] = useState<boolean | null>(null)
+  // False while this device has unsent changes or is showing cached data (no live connection).
+  const [synced, setSynced] = useState(true)
   useEffect(() => {
     if (!enabled) return
-    return onSnapshot(eventRef, (snap) => {
+    return onSnapshot(eventRef, { includeMetadataChanges: true }, (snap) => {
       setExists(snap.exists())
       setEv(snap.exists() ? withDefaults(snap.data() as Partial<EventDoc>) : null)
+      setSynced(!snap.metadata.hasPendingWrites && !snap.metadata.fromCache)
     })
   }, [enabled])
-  return { ev, exists }
+  return { ev, exists, synced }
 }
 
 export function useAttendees(enabled = true) {

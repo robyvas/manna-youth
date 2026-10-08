@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  activeFromPresent,
   buildGroups,
   computeSizes,
   effectiveSize,
@@ -77,5 +78,16 @@ describe('assignment', () => {
     const groups = buildGroups(leaders, [person('x', 'c')])
     expect(groups.map((g) => g.n)).toEqual([1, 2, 3])
     expect(groups[2].members).toHaveLength(1)
+  })
+})
+
+describe('check-ins', () => {
+  it('orders present leaders by team order, then by check-in time', () => {
+    const active = activeFromPresent({
+      z: { name: 'Zoe', order: 2, at: 1 },
+      a: { name: 'Ana', order: 1, at: 9 },
+      b: { name: 'Bogdan', order: 1, at: 3 },
+    })
+    expect(active.map((l) => l.pid)).toEqual(['b', 'a', 'z'])
   })
 })

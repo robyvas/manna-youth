@@ -7,6 +7,12 @@ export interface ActiveLeader {
   name: string
 }
 
+export interface PresentLeader {
+  name: string
+  order: number
+  at: number
+}
+
 export interface EventDoc {
   day: string // YYYY-MM-DD
   time: string // HH:mm
@@ -16,8 +22,13 @@ export interface EventDoc {
   groups: number
   kind: Kind
   released: boolean
-  /** Checked-in leaders, in team-list order. Position = group number. */
+  /**
+   * Checked-in leaders, in team-list order. Position = group number.
+   * Derived on read from `present`; older documents may still store it directly.
+   */
   active: ActiveLeader[]
+  /** One entry per checked-in leader, keyed by pid, so concurrent check-ins never overwrite each other. */
+  present?: Record<string, PresentLeader>
   /** Members per leader pid. Kept in sync by staff screens. */
   sizes: Record<string, number>
   count: number

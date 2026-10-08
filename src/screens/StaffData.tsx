@@ -11,6 +11,7 @@ interface StaffData {
   ev: EventDoc
   attendees: Attendee[]
   staff: Staff[]
+  synced: boolean
 }
 
 const Ctx = createContext<StaffData | null>(null)
@@ -23,7 +24,7 @@ export function useStaffData() {
 
 /** Live event, participants and team for every staff screen. */
 export function StaffDataProvider({ me, children }: { me: StaffUser; children: ReactNode }) {
-  const { ev, exists } = useEvent()
+  const { ev, exists, synced } = useEvent()
   const attendees = useAttendees()
   const staff = useStaffList()
   useHealCounters(ev, attendees)
@@ -46,5 +47,5 @@ export function StaffDataProvider({ me, children }: { me: StaffUser; children: R
     )
   }
   if (!ev || !attendees || !staff) return <Spinner />
-  return <Ctx.Provider value={{ me, ev, attendees, staff }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ me, ev, attendees, staff, synced }}>{children}</Ctx.Provider>
 }

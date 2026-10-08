@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -12,6 +13,7 @@ import {
 import { db, ensureSignedIn } from './firebase'
 import {
   DEFAULT_EVENT,
+  activeFromPresent,
   cleanName,
   computeSizes,
   generateAssignments,
@@ -31,7 +33,9 @@ export const staffCol = collection(db, 'staff')
 export const DEVICE_KEY = 'manna.attendeeId'
 
 export function withDefaults(data: Partial<EventDoc> | undefined): EventDoc {
-  return { ...DEFAULT_EVENT, ...(data ?? {}) }
+  const ev = { ...DEFAULT_EVENT, ...(data ?? {}) }
+  if (data?.present) ev.active = activeFromPresent(data.present)
+  return ev
 }
 
 // ---------- participant ----------
@@ -95,12 +99,21 @@ async function loadAttendees(): Promise<Attendee[]> {
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Attendee, 'id'>) }))
 }
 
-async function commitAssignments(attendees: Attendee[], changes: Map<string, string | null>, active: ActiveLeader[], extra: Partial<EventDoc> = {}) {
+/**
+ * Writes new group assignments plus the matching counters in one batch. Batches show up
+ * instantly on this device and reach the others as soon as the server confirms.
+ */
+function commitAssignments(
+  attendees: Attendee[],
+  changes: Map<string, string | null>,
+  active: ActiveLeader[],
+  extra: Record<string, unknown> = {},
+) {
   const batch = writeBatch(db)
   const next = attendees.map((a) => (changes.has(a.id) ? { ...a, leaderId: changes.get(a.id) ?? null } : a))
   for (const [id, leaderId] of changes) batch.update(doc(attendeesCol, id), { leaderId })
-  batch.update(eventRef, { active, sizes: computeSizes(next, active), count: next.length, ...extra })
-  await batch.commit()
+  batch.update(eventRef, { sizes: computeSizes(next, active), count: next.length, ...extra })
+  return batch.commit()
 }
 
 /** Leaders shown as groups, in team-list order. */
@@ -111,15 +124,30 @@ export function activeFrom(staff: Staff[], present: Set<string>): ActiveLeader[]
 /**
  * Check-in opens a group and fills it only with people still waiting.
  * Check-out dissolves the group; its members are re-placed in the others.
+ * Only this leader's entry in `present` is touched, so two people toggling at the
+ * same moment never undo each other. Uses the live attendee list already on screen.
  */
-export async function setCheckIn(staff: Staff[], ev: EventDoc, leader: Staff, on: boolean) {
+export function setCheckIn(staff: Staff[], ev: EventDoc, attendees: Attendee[], leader: Staff, on: boolean) {
   const present = new Set(ev.active.map((l) => l.pid))
   if (on) present.add(leader.pid)
   else present.delete(leader.pid)
   const active = activeFrom(staff, present)
-  const attendees = await loadAttendees()
   const changes = placeUnassigned(attendees, active)
-  await commitAssignments(attendees, changes, active)
+  const now = Date.now()
+  // Events saved before `present` existed keep check-ins in `active`: carry those over once.
+  const carried: Record<string, unknown> = {}
+  if (!ev.present) {
+    for (const l of ev.active) {
+      if (l.pid === leader.pid) continue
+      const order = staff.find((s) => s.pid === l.pid)?.order ?? 0
+      carried[`present.${l.pid}`] = { name: l.name, order, at: now }
+    }
+  }
+  return commitAssignments(attendees, changes, active, {
+    ...carried,
+    [`present.${leader.pid}`]: on ? { name: leader.name, order: leader.order, at: now } : deleteField(),
+    active: deleteField(),
+  })
 }
 
 export async function generateGroups(ev: EventDoc) {
@@ -146,7 +174,7 @@ export async function resetEvent(ev: EventDoc) {
     await batch.commit()
   }
   const history = ev.count > 0 ? [...ev.history, ev.count].slice(-4) : ev.history
-  await updateDoc(eventRef, { released: false, active: [], sizes: {}, count: 0, history })
+  await updateDoc(eventRef, { released: false, present: {}, active: deleteField(), sizes: {}, count: 0, history })
 }
 
 // ---------- staff: team ----------
@@ -164,9 +192,9 @@ export function updateStaff(email: string, patch: Partial<Pick<Staff, 'name' | '
 }
 
 /** Removing a member also takes them off tonight's leader list. */
-export async function removeStaff(staff: Staff[], ev: EventDoc, member: Staff) {
+export async function removeStaff(staff: Staff[], ev: EventDoc, attendees: Attendee[], member: Staff) {
   if (ev.active.some((l) => l.pid === member.pid)) {
-    await setCheckIn(staff.filter((s) => s.email !== member.email), ev, member, false)
+    await setCheckIn(staff.filter((s) => s.email !== member.email), ev, attendees, member, false)
   }
   await deleteDoc(doc(staffCol, member.email))
 }

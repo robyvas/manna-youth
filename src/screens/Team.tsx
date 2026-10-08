@@ -9,7 +9,7 @@ import { useStaffData } from './StaffData'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function Team() {
-  const { me, ev, staff } = useStaffData()
+  const { me, ev, staff, attendees } = useStaffData()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,7 +51,7 @@ export default function Team() {
       return
     }
     setConfirm(null)
-    run(() => removeStaff(staff, ev, s))
+    run(() => removeStaff(staff, ev, attendees, s))
   }
 
   return (
