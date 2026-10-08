@@ -22,11 +22,40 @@ function forgetDevice() {
   }
 }
 
+// The last name used on this device survives the weekly reset, so next time it is one tap.
+const NAME_KEY = 'manna.lastName'
+
+function readSavedName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function saveName(name: string | null) {
+  try {
+    if (name) localStorage.setItem(NAME_KEY, name)
+    else localStorage.removeItem(NAME_KEY)
+  } catch {
+    // Private mode: they will simply type it again.
+  }
+}
+
 export default function Participant() {
   const [signedIn, setSignedIn] = useState(false)
   const [authError, setAuthError] = useState(false)
   const [myId, setMyId] = useState<string | null>(readDevice)
   const [step, setStep] = useState<'landing' | 'name'>('landing')
+  const [savedName, setSavedName] = useState(readSavedName)
+  // Name to start the name step with, e.g. when the saved one is taken tonight.
+  const [prefill, setPrefill] = useState('')
+
+  function joined(id: string, name: string) {
+    saveName(name)
+    setSavedName(name)
+    setMyId(id)
+  }
 
   useEffect(() => {
     ensureSignedIn()
@@ -56,8 +85,30 @@ export default function Participant() {
     return <Waiting ev={ev} name={me.name} />
   }
 
-  if (step === 'name') return <NameStep ev={ev} onBack={() => setStep('landing')} onJoined={setMyId} />
-  return <Landing ev={ev} onNext={() => setStep('name')} />
+  if (step === 'name') {
+    return <NameStep ev={ev} initial={prefill} onBack={() => setStep('landing')} onJoined={joined} />
+  }
+  return (
+    <Landing
+      ev={ev}
+      savedName={savedName}
+      onNext={() => {
+        setPrefill('')
+        setStep('name')
+      }}
+      onJoined={joined}
+      onNameTaken={() => {
+        setPrefill(savedName)
+        setStep('name')
+      }}
+      onNotMe={() => {
+        saveName(null)
+        setSavedName('')
+        setPrefill('')
+        setStep('name')
+      }}
+    />
+  )
 }
 
 function Unavailable({ text }: { text: string }) {
@@ -69,9 +120,39 @@ function Unavailable({ text }: { text: string }) {
   )
 }
 
-function Landing({ ev, onNext }: { ev: EventDoc; onNext: () => void }) {
+function Landing({
+  ev,
+  savedName,
+  onNext,
+  onJoined,
+  onNameTaken,
+  onNotMe,
+}: {
+  ev: EventDoc
+  savedName: string
+  onNext: () => void
+  onJoined: (id: string, name: string) => void
+  onNameTaken: () => void
+  onNotMe: () => void
+}) {
   const k = KINDS[ev.kind]
   const isToday = ev.day === todayISO()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function quickJoin() {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      onJoined(await joinEvent(savedName), savedName)
+    } catch (e) {
+      setBusy(false)
+      if (e instanceof NameTakenError) onNameTaken()
+      else setError('Nu am reușit să te înscriem. Mai încearcă o dată.')
+    }
+  }
+
   return (
     <div className="screen anim-in">
       <div className="flex justify-end text-[11px] font-bold tracking-[.14em] opacity-85">
@@ -82,7 +163,36 @@ function Landing({ ev, onNext }: { ev: EventDoc; onNext: () => void }) {
         <div className="mt-[26px]">
           <Chip>{k.label}</Chip>
         </div>
-        {isToday ? (
+        {!isToday ? (
+          <div className="mt-3.5 text-[15px] leading-[1.45] opacity-90">
+            Check-in-ul se deschide în ziua întâlnirii. Ne vedem atunci!
+          </div>
+        ) : savedName ? (
+          <>
+            <div className="mt-3.5 font-display text-[26px] leading-tight">Bine ai revenit, {firstName(savedName)}!</div>
+            <div className="mt-2 text-[15px] leading-[1.45] opacity-90">Un tap și îți găsim {k.unitAcc} pentru seara asta.</div>
+            <Button
+              className="anim-in mt-7 text-base shadow-[0_8px_24px_rgba(0,0,0,.18)]"
+              style={{ animationDelay: '150ms' }}
+              onClick={quickJoin}
+              disabled={busy}
+            >
+              {busy ? (
+                <>
+                  <Star size={18} className="anim-spin" /> Te înscriem…
+                </>
+              ) : (
+                <>
+                  Intru ca {savedName} <Icon name="arrow" />
+                </>
+              )}
+            </Button>
+            {error && <div className="anim-shake mt-3 text-[13px] opacity-90">{error}</div>}
+            <button onClick={onNotMe} disabled={busy} className="press mt-4 rounded-full px-4 py-2 text-[13px] font-semibold text-cream/80 underline underline-offset-4">
+              Nu sunt {firstName(savedName)}
+            </button>
+          </>
+        ) : (
           <>
             <div className="mt-3.5 text-[15px] leading-[1.45] opacity-90">
               Spune-ne cum te cheamă și îți găsim {k.unitAcc} pentru seara asta.
@@ -91,20 +201,27 @@ function Landing({ ev, onNext }: { ev: EventDoc; onNext: () => void }) {
               Intru <Icon name="arrow" />
             </Button>
           </>
-        ) : (
-          <div className="mt-3.5 text-[15px] leading-[1.45] opacity-90">
-            Check-in-ul se deschide în ziua întâlnirii. Ne vedem atunci!
-          </div>
         )}
       </div>
     </div>
   )
 }
 
-function NameStep({ ev, onBack, onJoined }: { ev: EventDoc; onBack: () => void; onJoined: (id: string) => void }) {
+function NameStep({
+  ev,
+  initial,
+  onBack,
+  onJoined,
+}: {
+  ev: EventDoc
+  initial: string
+  onBack: () => void
+  onJoined: (id: string, name: string) => void
+}) {
   const k = KINDS[ev.kind]
-  const [name, setName] = useState('')
-  const [taken, setTaken] = useState<string | null>(null)
+  const [name, setName] = useState(initial)
+  // A prefilled name only gets here when it was already taken tonight.
+  const [taken, setTaken] = useState<string | null>(initial ? cleanName(initial).toLowerCase() : null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -128,7 +245,7 @@ function NameStep({ ev, onBack, onJoined }: { ev: EventDoc; onBack: () => void; 
     setBusy(true)
     setError('')
     try {
-      onJoined(await joinEvent(typed))
+      onJoined(await joinEvent(typed), typed)
     } catch (e) {
       if (e instanceof NameTakenError) setTaken(typed.toLowerCase())
       else setError('Nu am reușit să te înscriem. Mai încearcă o dată.')
