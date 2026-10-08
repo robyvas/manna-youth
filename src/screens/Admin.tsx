@@ -108,6 +108,8 @@ export default function Admin() {
         />
       </div>
 
+      <LiveCount count={attendees.length} expected={draft.expected} />
+
       <div className="mt-[22px] flex gap-1 rounded-full bg-black/22 p-1">
         {(['size', 'count'] as const).map((m) => (
           <button
@@ -233,9 +235,34 @@ export default function Admin() {
             </>
           )}
         </Button>
-        <div className="text-center text-xs text-cream/75">
-          {ev.released ? `Participanții își văd acum ${k.unitAcc}.` : `${attendees.length} în așteptare · ${present} lideri prezenți`}
+        {ev.released && <div className="text-center text-xs text-cream/75">Participanții își văd acum {k.unitAcc}.</div>}
+      </div>
+    </div>
+  )
+}
+
+/** Live head count for tonight, the number that matters during the evening. */
+function LiveCount({ count, expected }: { count: number; expected: number }) {
+  const pct = expected > 0 ? Math.min(100, Math.round((count / expected) * 100)) : 0
+  return (
+    <div className="mt-[22px] rounded-[20px] bg-cream p-[18px] text-ink shadow-[0_10px_28px_rgba(0,0,0,.22)]">
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] font-bold tracking-[.12em] text-ink/70">PARTICIPANȚI PREZENȚI</div>
+        <div className="flex items-center gap-1.5 rounded-full bg-manna/10 px-2 py-0.5 text-[10px] font-bold tracking-[.12em] text-manna">
+          <span className="anim-pulse-fast inline-block h-1.5 w-1.5 rounded-full bg-manna" />
+          LIVE
         </div>
+      </div>
+      <div className="mt-1 flex items-end justify-between gap-3">
+        <div key={count} className="anim-bump origin-left font-display text-[64px] leading-[.95] text-manna">
+          {count}
+        </div>
+        <div className="pb-2 text-right text-[13px] font-semibold leading-tight text-ink/70">
+          din ~{expected} așteptați
+        </div>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink/10">
+        <div style={{ width: `${pct}%` }} className="h-full rounded-full bg-manna transition-[width] duration-700 ease-out" />
       </div>
     </div>
   )
