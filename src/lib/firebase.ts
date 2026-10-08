@@ -7,7 +7,7 @@ import {
   signInAnonymously,
   signOut,
 } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { disableNetwork, enableNetwork, initializeFirestore } from 'firebase/firestore'
 
 const app = initializeApp({
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -25,7 +25,32 @@ export const auth = initializeAuth(app, {
   popupRedirectResolver: browserPopupRedirectResolver,
 })
 auth.languageCode = 'ro'
-export const db = getFirestore(app)
+// Long polling instead of streaming: Safari on iOS tends to stall streaming listeners,
+// which leaves screens silently out of date until the next reload.
+export const db = initializeFirestore(app, { experimentalForceLongPolling: true })
+
+// When a phone screen turns off or the app goes to the background, iOS drops the
+// connection without Firestore noticing. Restart it as soon as the page is back in
+// view (or the network returns) so changes made meanwhile arrive right away.
+let hiddenAt = 0
+let restarting = false
+async function reconnect() {
+  if (restarting) return
+  restarting = true
+  try {
+    await disableNetwork(db)
+    await enableNetwork(db)
+  } finally {
+    restarting = false
+  }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') hiddenAt = Date.now()
+    else if (hiddenAt && Date.now() - hiddenAt > 3000) reconnect()
+  })
+  window.addEventListener('online', () => reconnect())
+}
 
 /** Participants get a silent anonymous session so rules can tie them to their own record. */
 export async function ensureSignedIn() {
