@@ -35,7 +35,10 @@ function Login({ scope }: { scope: 'leader' | 'admin' }) {
       await signInWithGoogle()
     } catch (e) {
       const code = (e as { code?: string }).code ?? ''
-      if (!code.includes('popup-closed') && !code.includes('cancelled-popup')) setError('Conectarea nu a mers. Mai încearcă o dată.')
+      if (code.includes('popup-closed') || code.includes('cancelled-popup')) return
+      if (code.includes('popup-blocked')) setError('Browserul a blocat fereastra Google. Permite pop-up-urile pentru acest site și apasă din nou.')
+      else if (code.includes('network')) setError('Nu e conexiune la internet. Verifică și mai încearcă.')
+      else setError('Conectarea nu a mers. Mai încearcă o dată.')
     }
   }
   return (

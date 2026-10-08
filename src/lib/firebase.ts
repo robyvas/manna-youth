@@ -1,5 +1,12 @@
 import { initializeApp } from 'firebase/app'
-import { browserLocalPersistence, indexedDBLocalPersistence, initializeAuth, signInAnonymously, signOut } from 'firebase/auth'
+import {
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  indexedDBLocalPersistence,
+  initializeAuth,
+  signInAnonymously,
+  signOut,
+} from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const app = initializeApp({
@@ -11,8 +18,12 @@ const app = initializeApp({
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 })
 
-// No popup resolver here: the Google sign-in code lives in the staff bundle (googleSignIn.ts).
-export const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] })
+// The popup resolver must be ready at startup: if it loads on the first click, the Google
+// window opens after an await and browsers block it as an unsolicited popup.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver,
+})
 auth.languageCode = 'ro'
 export const db = getFirestore(app)
 
