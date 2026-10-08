@@ -1,7 +1,7 @@
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import { doc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { useEffect, useRef, useState } from 'react'
-import { attendeesCol, eventRef, getStaff, staffCol, updateEvent, withDefaults } from './data'
+import { attendeesCol, eventRef, staffCol, updateEvent, withDefaults } from './data'
 import { auth } from './firebase'
 import { computeSizes } from './logic'
 import type { Attendee, EventDoc, Role, Staff } from './types'
@@ -25,17 +25,37 @@ export type StaffSession =
   | { status: 'signedOut' }
   | { status: 'ready'; user: User; member: Staff | null; role: Role }
 
-/** Google session plus the team record that decides the role. */
+/**
+ * Google session plus the team record that decides the role. The record is watched live,
+ * so being added to (or removed from) the team takes effect without signing in again.
+ */
 export function useStaffSession(): StaffSession {
   const { user, ready } = useAuthUser()
   const [member, setMember] = useState<{ uid: string; staff: Staff | null } | null>(null)
 
   useEffect(() => {
     if (!user || user.isAnonymous || !user.email) return
-    let alive = true
-    getStaff(user.email).then((staff) => alive && setMember({ uid: user.uid, staff }))
+    const ref = doc(staffCol, user.email.toLowerCase())
+    let unsub: (() => void) | null = null
+    let retry: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
+    const listen = () => {
+      unsub = onSnapshot(
+        ref,
+        (snap) => setMember({ uid: user.uid, staff: snap.exists() ? (snap.data() as Staff) : null }),
+        (err) => {
+          // Rules hide the team from outsiders, so "not on the list" arrives as permission-denied.
+          // Anything else is a connection problem: keep waiting instead of showing "no access".
+          if (err.code === 'permission-denied') setMember({ uid: user.uid, staff: null })
+          if (!stopped) retry = setTimeout(listen, err.code === 'permission-denied' ? 5000 : 2000)
+        },
+      )
+    }
+    listen()
     return () => {
-      alive = false
+      stopped = true
+      unsub?.()
+      if (retry) clearTimeout(retry)
     }
   }, [user])
 

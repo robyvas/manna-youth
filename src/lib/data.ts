@@ -151,16 +151,6 @@ export async function resetEvent(ev: EventDoc) {
 
 // ---------- staff: team ----------
 
-export async function getStaff(email: string): Promise<Staff | null> {
-  try {
-    const snap = await getDoc(doc(staffCol, email.toLowerCase()))
-    return snap.exists() ? (snap.data() as Staff) : null
-  } catch {
-    // Rules deny reads to anyone who is not on the team.
-    return null
-  }
-}
-
 export async function addStaff(input: { name: string; email: string; isLeader: boolean; isAdmin: boolean }, order: number) {
   const email = input.email.trim().toLowerCase()
   const ref = doc(staffCol, email)

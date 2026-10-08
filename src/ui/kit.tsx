@@ -79,9 +79,20 @@ export function Notice({ children, strong = false }: { children: ReactNode; stro
 }
 
 export function Spinner() {
+  // On a weak connection the first load can take a while; say so instead of looking frozen.
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 6000)
+    return () => clearTimeout(t)
+  }, [])
   return (
-    <div className="screen items-center justify-center">
+    <div className="screen items-center justify-center text-center">
       <Star size={56} className="anim-pulse" />
+      {slow && (
+        <div className="anim-in mt-5 max-w-[260px] text-[13px] leading-[1.4] text-cream/75">
+          Se încarcă mai greu decât de obicei. Verifică internetul, pagina continuă singură.
+        </div>
+      )}
     </div>
   )
 }

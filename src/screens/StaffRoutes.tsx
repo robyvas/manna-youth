@@ -14,6 +14,9 @@ import Verify from './Verify'
  */
 function StaffShell() {
   const { pathname } = useLocation()
+  // "/Admin/" and "/admin" should behave the same (tabs and scope compare exact paths).
+  const normalized = pathname.toLowerCase().replace(/\/+$/, '') || '/'
+  if (normalized !== pathname) return <Navigate to={normalized} replace />
   const scope = pathname.startsWith('/admin') ? 'admin' : 'leader'
   const showTabs = pathname !== '/admin/afis'
   return (
@@ -30,6 +33,16 @@ function StaffShell() {
   )
 }
 
+/**
+ * Unknown addresses go to the closest section, so typos like /in/lider, /lideri
+ * or /admin/ still land somewhere sensible instead of the participant page.
+ */
+function GuessRoute() {
+  const path = useLocation().pathname.toLowerCase()
+  const to = path.includes('admin') ? '/admin' : /lider|leader/.test(path) ? '/lider' : '/in'
+  return <Navigate to={to} replace />
+}
+
 /** Everything behind Google sign-in. Loaded separately so the participant page stays light. */
 export default function StaffRoutes() {
   return (
@@ -42,7 +55,7 @@ export default function StaffRoutes() {
         <Route path="/admin/echipa" element={<Team />} />
         <Route path="/admin/afis" element={<Poster />} />
       </Route>
-      <Route path="*" element={<Navigate to="/in" replace />} />
+      <Route path="*" element={<GuessRoute />} />
     </Routes>
   )
 }
